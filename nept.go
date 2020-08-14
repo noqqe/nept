@@ -36,21 +36,42 @@ type Pixel struct {
 	r, g, b, a uint32
 }
 
+func editPixel(x, y int, src image.Image, img *image.RGBA) {
+
+  debugging("\nEditing Pixel %d:%d", x, y)
+
+  // read values from original pixel and create new struct
+  r, g, b, a := src.At(x, y).RGBA()
+  pixel := Pixel{r: r, g: g, b: b, a: a}
+
+  debugging("Original: %+v", pixel)
+
+  if *bright > 0 {
+    pixel = brighten(pixel, uint32(*bright))
+  }
+
+  if *dark > 0 {
+    pixel = darken(pixel, uint32(*dark))
+  }
+
+  if *flat > 0 {
+    pixel = flatten(pixel, uint32(*flat))
+  }
+
+  if *iso > 0 {
+    pixel = isoify(pixel, uint32(*iso))
+  }
+
+  debugging("Modified: %+v", pixel)
+  img.Set(x, y, constructRGBA(pixel))
+}
+
 func main() {
 
 	flag.Parse()
-	infile, err := os.Open(*in)
-	if err != nil {
-		panic("Please specify input file using -i")
-	}
-	defer infile.Close()
 
-
-	src, _, err := image.Decode(infile)
-	if err != nil {
-		// replace this with real error handling
-		panic(err)
-	}
+  // Open File and read
+  src := readImage(*in)
 
 	// initialize random seed
 	rand.Seed(time.Now().UnixNano())
@@ -64,34 +85,7 @@ func main() {
 
 	for x := 0; x < w; x++ {
 		for y := 0; y < h; y++ {
-
-			debugging("\nEditing Pixel %d:%d", x, y)
-
-			// read values from original pixel and create new struct
-			r, g, b, a := src.At(x, y).RGBA()
-			pixel := Pixel{r: r, g: g, b: b, a: a}
-
-			debugging("Original: %+v", pixel)
-
-			if *bright > 0 {
-				pixel = brighten(pixel, uint32(*bright))
-			}
-
-			if *dark > 0 {
-				pixel = darken(pixel, uint32(*dark))
-			}
-
-			if *flat > 0 {
-				pixel = flatten(pixel, uint32(*flat))
-			}
-
-			if *iso > 0 {
-				pixel = isoify(pixel, uint32(*iso))
-			}
-
-			debugging("Modified: %+v", pixel)
-			img.Set(x, y, constructRGBA(pixel))
-
+      editPixel(x, y, src, img)
 		}
 	}
 
@@ -106,6 +100,24 @@ func debugging(format string, args ...interface{}) {
 	if *debug == true {
 		fmt.Fprintf(os.Stdout, format+"\n", args...)
 	}
+}
+
+// Reads various filetypes from file from argument
+func readImage(in string) image.Image {
+	infile, err := os.Open(in)
+	if err != nil {
+		panic("Please specify input file using -i")
+	}
+	defer infile.Close()
+
+
+	src, _, err := image.Decode(infile)
+	if err != nil {
+		// replace this with real error handling
+		panic(err)
+	}
+
+  return src
 }
 
 // Construct Pixel
