@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/png"
-	_ "image/jpeg"
 	_ "image/gif"
+	_ "image/jpeg"
+	"image/png"
 	"math/rand"
 	"os"
-  "time"
+	"sync"
+	"time"
 )
 
 // Calculation constants
@@ -36,42 +37,46 @@ type Pixel struct {
 	r, g, b, a uint32
 }
 
-func editPixel(x, y int, src image.Image, img *image.RGBA) {
+func editPixel(x, y int, src image.Image, img *image.RGBA, wg *sync.WaitGroup) {
 
-  debugging("\nEditing Pixel %d:%d", x, y)
+	// waiting group cancel after function
+	defer wg.Done()
 
-  // read values from original pixel and create new struct
-  r, g, b, a := src.At(x, y).RGBA()
-  pixel := Pixel{r: r, g: g, b: b, a: a}
+	debugging("\nEditing Pixel %d:%d", x, y)
 
-  debugging("Original: %+v", pixel)
+	// read values from original pixel and create new struct
+	r, g, b, a := src.At(x, y).RGBA()
+	pixel := Pixel{r: r, g: g, b: b, a: a}
 
-  if *bright > 0 {
-    pixel = brighten(pixel, uint32(*bright))
-  }
+	debugging("Original: %+v", pixel)
 
-  if *dark > 0 {
-    pixel = darken(pixel, uint32(*dark))
-  }
+	if *bright > 0 {
+		pixel = brighten(pixel, uint32(*bright))
+	}
 
-  if *flat > 0 {
-    pixel = flatten(pixel, uint32(*flat))
-  }
+	if *dark > 0 {
+		pixel = darken(pixel, uint32(*dark))
+	}
 
-  if *iso > 0 {
-    pixel = isoify(pixel, uint32(*iso))
-  }
+	if *flat > 0 {
+		pixel = flatten(pixel, uint32(*flat))
+	}
 
-  debugging("Modified: %+v", pixel)
-  img.Set(x, y, constructRGBA(pixel))
+	if *iso > 0 {
+		pixel = isoify(pixel, uint32(*iso))
+	}
+
+	debugging("Modified: %+v", pixel)
+	img.Set(x, y, constructRGBA(pixel))
 }
 
 func main() {
 
+	var wg sync.WaitGroup
 	flag.Parse()
 
-  // Open File and read
-  src := readImage(*in)
+	// Open File and read
+	src := readImage(*in)
 
 	// initialize random seed
 	rand.Seed(time.Now().UnixNano())
@@ -85,9 +90,11 @@ func main() {
 
 	for x := 0; x < w; x++ {
 		for y := 0; y < h; y++ {
-      editPixel(x, y, src, img)
+			wg.Add(1)
+			go editPixel(x, y, src, img, &wg)
 		}
 	}
+	wg.Wait()
 
 	// Encode as PNG.
 	f, _ := os.Create(*out)
@@ -110,14 +117,13 @@ func readImage(in string) image.Image {
 	}
 	defer infile.Close()
 
-
 	src, _, err := image.Decode(infile)
 	if err != nil {
 		// replace this with real error handling
 		panic(err)
 	}
 
-  return src
+	return src
 }
 
 // Construct Pixel
