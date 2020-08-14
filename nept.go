@@ -6,6 +6,8 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	_ "image/jpeg"
+	_ "image/gif"
 	"math/rand"
 	"os"
   "time"
@@ -42,6 +44,7 @@ func main() {
 		panic("Please specify input file using -i")
 	}
 	defer infile.Close()
+
 
 	src, _, err := image.Decode(infile)
 	if err != nil {
