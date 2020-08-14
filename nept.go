@@ -95,6 +95,7 @@ func main() {
 			go editPixel(x, y, src, img, &wg)
 		}
 	}
+	wg.Wait()
 
 	// Encode as PNG.
 	f, _ := os.Create(*out)
