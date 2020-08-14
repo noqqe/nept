@@ -218,6 +218,10 @@ func flatten(p Pixel, v uint32) Pixel {
 	return p
 }
 
+// Adds noise to an image resulting in having an high ISO like
+// look. Done by adding random values in a certain range to the rgb value.
+// [ (48, 150, 30), (49, 151, 31) ]
+//    +10,+10,+10    +1, +1, +1
 func isoify(p Pixel, v uint32) Pixel {
 	r := uint32(rand.Int31n(int32(v)))
 	p.r = addInt(p.r, percentToInt(r))
