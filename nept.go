@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"math/rand"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -36,7 +37,10 @@ type Pixel struct {
 	r, g, b, a uint32
 }
 
-func editPixel(x, y int, src image.Image, img *image.RGBA) {
+func editPixel(x, y int, src image.Image, img *image.RGBA, wg *sync.WaitGroup) {
+
+	// waiting group cancel after function
+	defer wg.Done()
 
 	debugging("\nEditing Pixel %d:%d", x, y)
 
@@ -68,6 +72,8 @@ func editPixel(x, y int, src image.Image, img *image.RGBA) {
 
 func main() {
 
+	var wg sync.WaitGroup
+
 	flag.Parse()
 
 	// Open File and read
@@ -85,7 +91,8 @@ func main() {
 
 	for x := 0; x < w; x++ {
 		for y := 0; y < h; y++ {
-			editPixel(x, y, src, img)
+			wg.Add(1)
+			go editPixel(x, y, src, img, &wg)
 		}
 	}
 
