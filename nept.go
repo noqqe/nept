@@ -27,13 +27,17 @@ type Pixel struct {
 	r, g, b, a uint32
 }
 
-func editPixel(x, y int, src image.Image, img *image.RGBA, wg *sync.WaitGroup, bright, dark, flat, iso int) {
+func editPixel(x, y int, src image.Image, img *image.RGBA, wg *sync.WaitGroup, bright, dark, flat, iso int, neg bool) {
 
 	// waiting group cancel after function
 	defer wg.Done()
 	// read values from original pixel and create new struct
 	r, g, b, a := src.At(x, y).RGBA()
 	pixel := Pixel{r: r, g: g, b: b, a: a}
+
+	if neg == true {
+		pixel = negative(pixel)
+	}
 
 	if bright > 0 {
 		pixel = brighten(pixel, uint32(bright))
@@ -59,6 +63,7 @@ func main() {
 	// Global Flag definitions
 	var in string
 	var out string
+	var neg bool
 	var bright, dark, flat, iso int
 	var wg sync.WaitGroup
 
@@ -92,6 +97,13 @@ func main() {
 				Usage:       "Add iso to the image",
 				Aliases:     []string{"s"},
 				Destination: &iso,
+			},
+			&cli.BoolFlag{
+				Name:        "negative",
+				Value:       false,
+				Usage:       "Convert negative to positive image",
+				Aliases:     []string{"n"},
+				Destination: &neg,
 			},
 			&cli.PathFlag{
 				Name:        "in",
@@ -140,7 +152,7 @@ func main() {
 			for x := 0; x < w; x++ {
 				for y := 0; y < h; y++ {
 					wg.Add(1)
-					go editPixel(x, y, src, img, &wg, bright, dark, flat, iso)
+					go editPixel(x, y, src, img, &wg, bright, dark, flat, iso, neg)
 					bar.Add(1)
 				}
 			}
@@ -266,5 +278,16 @@ func isoify(p Pixel, v uint32) Pixel {
 	p.r = addInt(p.r, percentToInt(r))
 	p.g = addInt(p.g, percentToInt(r))
 	p.b = addInt(p.b, percentToInt(r))
+	return p
+}
+
+// Converts each value into its opposite
+// Useful for converting negative film scans
+// [ (2, 255, 250) ]
+// [ (254, 0,		4) ]
+func negative(p Pixel) Pixel {
+	p.r = uint32(intMax) - p.r
+	p.g = uint32(intMax) - p.g
+	p.b = uint32(intMax) - p.b
 	return p
 }
