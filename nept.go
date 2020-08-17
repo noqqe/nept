@@ -38,6 +38,7 @@ func editPixel(m Modifications, src image.Image, img *image.RGBA, wg *sync.WaitG
 
 	// waiting group cancel after function
 	defer wg.Done()
+
 	// read values from original pixel and create new struct
 	r, g, b, a := src.At(m.x, m.y).RGBA()
 	pixel := Pixel{r: r, g: g, b: b, a: a}
@@ -170,8 +171,7 @@ func main() {
 							flat:   flat,
 							iso:    iso,
 							neg:    neg},
-						src, img, &wg
-					)
+						src, img, &wg)
 
 				}
 			}
