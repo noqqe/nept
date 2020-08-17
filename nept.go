@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	progressbar "github.com/schollz/progressbar/v3"
 	"image"
 	"image/color"
 	_ "image/gif"
@@ -86,6 +87,18 @@ func main() {
 	bounds := src.Bounds()
 	w, h := bounds.Max.X, bounds.Max.Y
 
+	// Initialize Progress Bar
+	bar := progressbar.NewOptions(w*h,
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionSetWidth(30),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]=[reset]",
+			SaucerHead:    "[green]>[reset]",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}))
+
 	// initialize new image
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 
@@ -93,6 +106,7 @@ func main() {
 		for y := 0; y < h; y++ {
 			wg.Add(1)
 			go editPixel(x, y, src, img, &wg)
+			bar.Add(1)
 		}
 	}
 	wg.Wait()
