@@ -27,35 +27,42 @@ type Pixel struct {
 	r, g, b, a uint32
 }
 
-func editPixel(x, y int, src image.Image, img *image.RGBA, wg *sync.WaitGroup, bright, dark, flat, iso int, neg bool) {
+// Modification
+type Modifications struct {
+	x, y                    int  // Coords
+	bright, dark, flat, iso int  // Mods on scale
+	neg                     bool // Mods enable/disable
+}
+
+func editPixel(m Modifications, src image.Image, img *image.RGBA, wg *sync.WaitGroup) {
 
 	// waiting group cancel after function
 	defer wg.Done()
 	// read values from original pixel and create new struct
-	r, g, b, a := src.At(x, y).RGBA()
+	r, g, b, a := src.At(m.x, m.y).RGBA()
 	pixel := Pixel{r: r, g: g, b: b, a: a}
 
-	if neg == true {
+	if m.neg == true {
 		pixel = negative(pixel)
 	}
 
-	if bright > 0 {
-		pixel = brighten(pixel, uint32(bright))
+	if m.bright > 0 {
+		pixel = brighten(pixel, uint32(m.bright))
 	}
 
-	if dark > 0 {
-		pixel = darken(pixel, uint32(dark))
+	if m.dark > 0 {
+		pixel = darken(pixel, uint32(m.dark))
 	}
 
-	if flat > 0 {
-		pixel = flatten(pixel, uint32(flat))
+	if m.flat > 0 {
+		pixel = flatten(pixel, uint32(m.flat))
 	}
 
-	if iso > 0 {
-		pixel = isoify(pixel, uint32(iso))
+	if m.iso > 0 {
+		pixel = isoify(pixel, uint32(m.iso))
 	}
 
-	img.Set(x, y, constructRGBA(pixel))
+	img.Set(m.x, m.y, constructRGBA(pixel))
 }
 
 func main() {
@@ -152,8 +159,20 @@ func main() {
 			for x := 0; x < w; x++ {
 				for y := 0; y < h; y++ {
 					wg.Add(1)
-					go editPixel(x, y, src, img, &wg, bright, dark, flat, iso, neg)
 					bar.Add(1)
+
+					go editPixel(
+						Modifications{
+							x:      x,
+							y:      y,
+							bright: bright,
+							dark:   dark,
+							flat:   flat,
+							iso:    iso,
+							neg:    neg},
+						src, img, &wg
+					)
+
 				}
 			}
 			wg.Wait()
