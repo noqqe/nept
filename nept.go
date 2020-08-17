@@ -1,14 +1,14 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	progressbar "github.com/schollz/progressbar/v3"
+	"github.com/schollz/progressbar/v3"
+	"github.com/urfave/cli/v2"
 	"image"
 	"image/color"
 	_ "image/gif"
 	_ "image/jpeg"
 	"image/png"
+	"log"
 	"math/rand"
 	"os"
 	"sync"
@@ -22,113 +22,146 @@ const (
 	intMax     float32 = 65535
 )
 
-// Global Flag definitions
-var in = flag.String("i", "", "input file to adjust")
-var out = flag.String("o", "", "output file to adjust")
-var debug = flag.Bool("debug", false, "debugging on")
-
-// Editing Flags
-var bright = flag.Int("b", 0, "brighten")
-var dark = flag.Int("d", 0, "darken")
-var flat = flag.Int("f", 0, "flatten")
-var iso = flag.Int("s", 0, "iso")
-
 // Pixel
 type Pixel struct {
 	r, g, b, a uint32
 }
 
-func editPixel(x, y int, src image.Image, img *image.RGBA, wg *sync.WaitGroup) {
+func editPixel(x, y int, src image.Image, img *image.RGBA, wg *sync.WaitGroup, bright, dark, flat, iso int) {
 
 	// waiting group cancel after function
 	defer wg.Done()
-
-	debugging("\nEditing Pixel %d:%d", x, y)
-
 	// read values from original pixel and create new struct
 	r, g, b, a := src.At(x, y).RGBA()
 	pixel := Pixel{r: r, g: g, b: b, a: a}
 
-	debugging("Original: %+v", pixel)
-
-	if *bright > 0 {
-		pixel = brighten(pixel, uint32(*bright))
+	if bright > 0 {
+		pixel = brighten(pixel, uint32(bright))
 	}
 
-	if *dark > 0 {
-		pixel = darken(pixel, uint32(*dark))
+	if dark > 0 {
+		pixel = darken(pixel, uint32(dark))
 	}
 
-	if *flat > 0 {
-		pixel = flatten(pixel, uint32(*flat))
+	if flat > 0 {
+		pixel = flatten(pixel, uint32(flat))
 	}
 
-	if *iso > 0 {
-		pixel = isoify(pixel, uint32(*iso))
+	if iso > 0 {
+		pixel = isoify(pixel, uint32(iso))
 	}
 
-	debugging("Modified: %+v", pixel)
 	img.Set(x, y, constructRGBA(pixel))
 }
 
 func main() {
 
+	// Global Flag definitions
+	var in string
+	var out string
+	var bright, dark, flat, iso int
 	var wg sync.WaitGroup
 
-	flag.Parse()
+	// Option Parser
+	app := &cli.App{
+		Flags: []cli.Flag{
+			&cli.IntFlag{
+				Name:        "brightness",
+				Value:       0,
+				Usage:       "Brighten the Image",
+				Aliases:     []string{"b"},
+				Destination: &bright,
+			},
+			&cli.IntFlag{
+				Name:        "darkness",
+				Value:       0,
+				Usage:       "Darken the image",
+				Aliases:     []string{"d"},
+				Destination: &dark,
+			},
+			&cli.IntFlag{
+				Name:        "flatten",
+				Value:       0,
+				Usage:       "Flatten the image",
+				Aliases:     []string{"f"},
+				Destination: &flat,
+			},
+			&cli.IntFlag{
+				Name:        "iso",
+				Value:       0,
+				Usage:       "Add iso to the image",
+				Aliases:     []string{"s"},
+				Destination: &iso,
+			},
+			&cli.PathFlag{
+				Name:        "in",
+				Usage:       "Image to edit (input)",
+				Aliases:     []string{"i"},
+				Destination: &in,
+				Required:    true,
+				TakesFile:   true,
+			},
+			&cli.PathFlag{
+				Name:        "out",
+				Usage:       "Image to edit (output)",
+				Aliases:     []string{"o"},
+				Destination: &out,
+				Required:    true,
+				TakesFile:   true,
+			},
+		},
+		Action: func(c *cli.Context) error {
 
-	// Open File and read
-	src := readImage(*in)
+			// Open File and read
+			src := readImage(in)
 
-	// initialize random seed
-	rand.Seed(time.Now().UnixNano())
+			// initialize random seed
+			rand.Seed(time.Now().UnixNano())
 
-	// Fetch image dimensions
-	bounds := src.Bounds()
-	w, h := bounds.Max.X, bounds.Max.Y
+			// Fetch image dimensions
+			bounds := src.Bounds()
+			w, h := bounds.Max.X, bounds.Max.Y
 
-	// Initialize Progress Bar
-	bar := progressbar.NewOptions(w*h,
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionSetWidth(30),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}))
+			// Initialize Progress Bar
+			bar := progressbar.NewOptions(w*h,
+				progressbar.OptionEnableColorCodes(true),
+				progressbar.OptionSetWidth(30),
+				progressbar.OptionSetTheme(progressbar.Theme{
+					Saucer:        "[green]=[reset]",
+					SaucerHead:    "[green]>[reset]",
+					SaucerPadding: " ",
+					BarStart:      "[",
+					BarEnd:        "]",
+				}))
 
-	// initialize new image
-	img := image.NewRGBA(image.Rect(0, 0, w, h))
+			// initialize new image
+			img := image.NewRGBA(image.Rect(0, 0, w, h))
 
-	for x := 0; x < w; x++ {
-		for y := 0; y < h; y++ {
-			wg.Add(1)
-			go editPixel(x, y, src, img, &wg)
-			bar.Add(1)
-		}
+			for x := 0; x < w; x++ {
+				for y := 0; y < h; y++ {
+					wg.Add(1)
+					go editPixel(x, y, src, img, &wg, bright, dark, flat, iso)
+					bar.Add(1)
+				}
+			}
+			wg.Wait()
+
+			// Encode as PNG.
+			f, _ := os.Create(out)
+			png.Encode(f, img)
+
+			return nil
+		},
 	}
-	wg.Wait()
 
-	// Encode as PNG.
-	f, _ := os.Create(*out)
-	png.Encode(f, img)
-
-}
-
-// Debugging Messages
-func debugging(format string, args ...interface{}) {
-	if *debug == true {
-		fmt.Fprintf(os.Stdout, format+"\n", args...)
-	}
+	app.Run(os.Args)
 }
 
 // Reads various filetypes from file from argument
 func readImage(in string) image.Image {
 	infile, err := os.Open(in)
 	if err != nil {
-		panic("Please specify input file using -i")
+		log.Fatal("No such file or directory: ", in)
 	}
 	defer infile.Close()
 
@@ -149,43 +182,35 @@ func constructRGBA(p Pixel) color.RGBA {
 // convert modifier % in points in rgb255 space
 // ie. 20% -> 51 points
 func percentToInt(val uint32) uint32 {
-	debugging("percenttoInt: %d -> %d", val, uint32(intMax/percentMax*float32(val)))
 	return uint32(intMax / percentMax * float32(val))
 }
 
 // convert input uint32 to rgb255
 // ie. 60500 -> 235
 func uint32ToRGB(val uint32) uint8 {
-	debugging("uint32ToRGB: %d -> %d", val, uint8(rgbMax/percentMax*float32(val)/intMax*percentMax))
 	return uint8(rgbMax / percentMax * float32(val) / intMax * percentMax)
 }
 
 // Adds values to a color and checks boundaries
 // 67000 -> 65535
 func addInt(c, v uint32) uint32 {
-	o := c
-
 	if c+v > uint32(intMax) {
 		c = uint32(intMax)
 	} else {
 		c += v
 	}
 
-	debugging("addInt: %d + %d = %d", o, v, c)
 	return c
 }
 
 // Subs values to a color and checks boundaries
 // 4444232312 -> 0
 func subInt(c, v uint32) uint32 {
-	o := c
-
 	if c < v {
 		c = 0
 	} else {
 		c -= v
 	}
-	debugging("subInt: %d - %d = %d", o, v, c)
 
 	return c
 }
