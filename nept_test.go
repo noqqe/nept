@@ -140,3 +140,20 @@ func TestFlatten(t *testing.T) {
 	}
 
 }
+
+func TestNegative(t *testing.T) {
+
+	m := map[Pixel]Pixel{
+
+		Pixel{r: 0, g: 0, b: 0, a: 255}:             Pixel{r: 65535, g: 65535, b: 65535, a: 255}, // min val should be maxed
+		Pixel{r: 65535, g: 65535, b: 65535, a: 255}: Pixel{r: 0, g: 0, b: 0, a: 255},             // max val should be mined
+		Pixel{r: 32767, g: 32767, b: 32767, a: 255}: Pixel{r: 32768, g: 32768, b: 32768, a: 255}, // value should not be changed
+	}
+
+	for in, want := range m {
+		if got := negative(in); got != want {
+			t.Errorf("%v, want %v", got, want)
+		}
+	}
+
+}
