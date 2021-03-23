@@ -79,7 +79,9 @@ func main() {
 	app := &cli.App{
     Name: "nept",
     Version: "1.0.1",
-    Description: "Image manipulation program for commandline on pixel level",
+    Compiled: time.Now(),
+    Description: "Image manipulation program for commandline on pixel level.",
+    Usage: "Image manipulation program for commandline on pixel level",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
 				Name:        "brightness",
