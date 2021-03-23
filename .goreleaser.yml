@@ -83,10 +83,6 @@ brews:
     dependencies:
       - name: go
 
-    # Packages that conflict with your package.
-    conflicts:
-      - ipcalc
-
     # So you can `brew test` your formula.
     # Default is empty.
     test: |

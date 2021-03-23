@@ -78,7 +78,7 @@ func main() {
 	// Option Parser
 	app := &cli.App{
     Name: "nept",
-    Version: "1.0.0",
+    Version: "1.0.1",
     Description: "Image manipulation program for commandline on pixel level",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
