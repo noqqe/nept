@@ -1,8 +1,6 @@
 package main
 
 import (
-	"github.com/schollz/progressbar/v3"
-	"github.com/urfave/cli/v2"
 	"image"
 	"image/color"
 	_ "image/gif"
@@ -13,7 +11,12 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/schollz/progressbar/v3"
+	"github.com/urfave/cli/v2"
 )
+
+var Version = "unknown"
 
 // Calculation constants
 const (
@@ -77,11 +80,11 @@ func main() {
 
 	// Option Parser
 	app := &cli.App{
-    Name: "nept",
-    Version: "1.0.1",
-    Compiled: time.Now(),
-    Description: "Image manipulation program for commandline on pixel level.",
-    Usage: "Image manipulation program for commandline on pixel level",
+		Name:        "nept",
+		Version:     Version,
+		Compiled:    time.Now(),
+		Description: "Image manipulation program for commandline on pixel level.",
+		Usage:       "Image manipulation program for commandline on pixel level",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
 				Name:        "brightness",
@@ -275,7 +278,9 @@ func darken(p Pixel, v uint32) Pixel {
 
 // Raises lower imits of blacks what results in reduing depth and details.
 // [ (48, 150, 30) ]
-//    < ,  > , <
+//
+//	< ,  > , <
+//
 // [ (50, 150, 50) ]
 func flatten(p Pixel, v uint32) Pixel {
 	if p.r < percentToInt(v) {
@@ -296,7 +301,8 @@ func flatten(p Pixel, v uint32) Pixel {
 // Adds noise to an image resulting in having an high ISO like
 // look. Done by adding random values in a certain range to the rgb value.
 // [ (48, 150, 30), (49, 151, 31) ]
-//    +10,+10,+10    +1, +1, +1
+//
+//	+10,+10,+10    +1, +1, +1
 func isoify(p Pixel, v uint32) Pixel {
 	r := uint32(rand.Int31n(int32(v)))
 	p.r = addInt(p.r, percentToInt(r))
