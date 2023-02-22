@@ -3,6 +3,11 @@
 version: '3'
 
 tasks:
+
+  test:
+    cmds:
+      - go test -v --cover
+
   build:
     cmds:
       - go build -ldflags "-X main.Version=`git describe --tags`"  -v nept.go
@@ -21,5 +26,6 @@ tasks:
 
   default:
     cmds:
+      - task: test
       - task: build
 
